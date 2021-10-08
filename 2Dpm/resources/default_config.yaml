@@ -11,7 +11,7 @@ pointfeat_dim: 512
 imgfeat_dim: 128
 
 inp_dir: ""  # Directory path containing the input data (tfrecords).
-synth_set: "03001627"  # Class of Shapenet data
+synth_set: ""  # Class of Shapenet data
 num_views: 5  # Number of viewpoints in the input data.
 num_views_to_use: -1  # Num of views to actually use.
 tfrecords_gzip_compressed: true  # Compress TF record files.
@@ -28,7 +28,7 @@ f_dim: 16
 fc_dim: 1024
 
 # Predict points
-pc_num_points: 1024
+pc_num_points: 16000
 pc_decoder_init_stddev: 0.025
 pc_point_dropout: 1.0
 pc_point_dropout_scheduled: true
@@ -180,7 +180,7 @@ vis_all_views: false
 
 save_individual_images: false
 save_predictions: true  # Write predictions to disk
-save_voxels: false
+save_voxels: true
 save_point_clouds: true
 save_as_mat: true
 save_rotated_points: false

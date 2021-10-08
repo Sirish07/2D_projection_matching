@@ -110,9 +110,10 @@ def compute_predictions():
         cam_transform = out["cam_transform"]
         z_latent = out["z_latent"]
 
-        input_pc = tf.placeholder(tf.float32, [cfg.batch_size, None, 3])
+        input_pc = tf.placeholder(dtype = tf.float32, shape = [1, 16000, 3])
         if save_voxels:
             if fast_conversion:
+                # print(input_pc)
                 voxels, _ = pointcloud2voxels3d_fast(cfg, input_pc, None)
                 voxels = tf.expand_dims(voxels, axis=-1)
                 voxels = smoothen_voxels3d(cfg, voxels, model.gauss_kernel())
@@ -122,8 +123,8 @@ def compute_predictions():
         q_inp = tf.placeholder(tf.float32, [1, 4])
         q_matrix = as_rotation_matrix(q_inp)
 
-        input_pc, pred_quat, gt_quat, pc_unrot = model_unrotate_points(cfg)
-        pc_rot = quaternion_rotate(input_pc, pred_quat)
+        input_pc_unrot, pred_quat, gt_quat, pc_unrot = model_unrotate_points(cfg)
+        pc_rot = quaternion_rotate(input_pc_unrot, pred_quat)
 
         config = tf.ConfigProto(
             device_count={'GPU': 1}
@@ -138,7 +139,10 @@ def compute_predictions():
 
     restorer = tf.train.Saver(variables_to_restore)
     #checkpoint_file = tf.train.latest_checkpoint(exp_dir)
-    checkpoint_file = os.path.join(exp_dir, 'model-{}'.format(cfg.test_step))
+    synthdataset = cfg['synth_set']
+    pretrainedModelPath = os.path.join('./pretrained_model', synthdataset)
+    checkpoint_file = os.path.join(pretrainedModelPath, 'model')
+
     print("restoring checkpoint", checkpoint_file)
     restorer.restore(sess, checkpoint_file)
 
@@ -228,7 +232,7 @@ def compute_predictions():
                 if cfg.save_rotated_points:
                     ref_rot = scipy.io.loadmat("{}/final_reference_rotation.mat".format(exp_dir))
                     ref_rot = ref_rot["rotation"]
-                    pc_np_unrot = sess.run(pc_rot, feed_dict={input_pc: pc_np,
+                    pc_np_unrot = sess.run(pc_rot, feed_dict={input_pc_unrot: pc_np,
                                                                 pred_quat: ref_rot})
                     pc_np = pc_np_unrot
 
@@ -289,7 +293,8 @@ def compute_predictions():
                     pc_np_range = pc_np
                     if not fast_conversion:
                         pc_np_range *= 2.0
-                    voxels_np = sess.run(voxels, feed_dict={input_pc: pc_np_range})
+                    # print(pc_np_range)
+                    voxels_np = sess.run([voxels], feed_dict={input_pc: pc_np_range})
                     all_voxels[view_idx, :, :, :] = np.squeeze(voxels_np)
 
             vis_view = view_idx == 0 or cfg.vis_all_views

@@ -9,8 +9,8 @@ from util.data import tf_record_options
 
 
 def tf_records_dataset_filename(cfg):
-    filename = f'{cfg.synth_set}_test' + '.tfrecords'
-    return os.path.join(cfg.inp_dir, filename)
+    filename = cfg['synth_set'] + "_test" + '.tfrecords'
+    return os.path.join(cfg['inp_dir'], filename)
 
 
 Model3D = namedtuple('Model3D', 'id, name, voxels, mask, image, camera, cam_pos, depth, num_views')
@@ -28,6 +28,7 @@ class Dataset3D:
         num_views = cfg.num_views
 
         tfrecords_filename = tf_records_dataset_filename(cfg)
+        print(tfrecords_filename)
         options = tf_record_options(cfg)
         record_iterator = tf.python_io.tf_record_iterator(path=tfrecords_filename, options=options)
 
@@ -35,6 +36,7 @@ class Dataset3D:
         quickie = {}
         num_samples = cfg.num_dataset_samples
 
+        print(num_samples)
         for k, string_record in enumerate(record_iterator):
             if num_samples != -1 and k == num_samples:
                 break
