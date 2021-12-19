@@ -51,7 +51,8 @@ def train():
 
     tf.logging.set_verbosity(tf.logging.INFO)
     split_name = 'train'
-    dataset_file = os.path.join(cfg.inp_dir, f"{cfg.synth_set}_{split_name}.tfrecords")
+    dataset_file = os.path.join(cfg.inp_dir, f"{cfg['synth_set']}_{split_name}.tfrecords")
+    print(dataset_file)
 
     dataset = tf.data.TFRecordDataset(dataset_file, compression_type=tf_record_compression(cfg))
     if cfg.shuffle_dataset:
@@ -70,21 +71,19 @@ def train():
         global_step = tf.train.get_or_create_global_step()
         model = models.ModelPointCloud(cfg, global_step)
         inputs = model.preprocess(train_data, cfg.step_size)
-        
         model_fn = model.get_model_fn(
             is_training=True, reuse=False, run_projection=True)
         outputs = model_fn(inputs)
         # train_scopes
         train_scopes = ['encoder', 'decoder']
-        # loss
+        # # loss
         task_loss, c_loss, k_loss, de_loss = model.get_loss(inputs, outputs)
         reg_loss = regularization_loss(train_scopes, cfg)
         loss = task_loss #+ reg_loss
-
-        # summary op
+        # # summary op
         summary_op = tfsum.all_summary_ops()
 
-        # optimizer
+        # # optimizer
         var_list = get_trainable_variables(train_scopes)
        
         optimizer = tf.train.AdamOptimizer(get_learning_rate(cfg, global_step))
@@ -99,6 +98,7 @@ def train():
     session_config.gpu_options.allow_growth = cfg.gpu_allow_growth
     session_config.gpu_options.per_process_gpu_memory_fraction = cfg.per_process_gpu_memory_fraction
 
+
     sess = tf.Session(config=session_config)
     with sess, summary_writer.as_default():
         tf.global_variables_initializer().run()
@@ -110,13 +110,16 @@ def train():
 
         global_step_val = 0
         total_loss = 0
-        while global_step_val <= cfg.max_number_of_steps:
+        while global_step_val <= cfg['max_number_of_steps']:
             t0 = time.perf_counter()
-            _, loss_val, global_step_val, summary =sess.run([train_op, loss, global_step, summary_op])
-           
+            _, loss_val, global_step_val, summary, result = sess.run([train_op, loss, global_step, summary_op, outputs])
+            temp = result['all_points']
+            # print(temp)
+            points3d = result['points3D']
+            assert temp[0].all() == temp[1].all()
+            assert temp[0].all() == points3d.all()
             is_nan = np.isnan(loss_val)
             assert(not np.any(is_nan))
-
             t1 = time.perf_counter()
             dt = t1 - t0
             total_loss += loss_val

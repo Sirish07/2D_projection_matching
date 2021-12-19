@@ -17,6 +17,7 @@ def model(images, cfg, is_training):
     f_dim = cfg.f_dim
     fc_dim = cfg.fc_dim
     z_dim = cfg.z_dim
+    encout_dim = cfg.encout_dim # 512
     outputs = dict()
 
     act_func = tf.nn.leaky_relu
@@ -27,39 +28,24 @@ def model(images, cfg, is_training):
             weights_initializer=tf.contrib.layers.variance_scaling_initializer()):
         batch_size = images.shape[0]
         hf = slim.conv2d(images, f_dim, [5, 5], stride=2, activation_fn=act_func)
-
         num_blocks = int(np.log2(image_size / target_spatial_size) - 1)
 
         for k in range(num_blocks):
             f_dim = f_dim * 2
             hf = slim.conv2d(hf, f_dim, [3, 3], stride=2, activation_fn=act_func)
             hf = slim.conv2d(hf, f_dim, [3, 3], stride=1, activation_fn=act_func)
-
         # Reshape layer
         rshp0 = tf.reshape(hf, [batch_size, -1])
         outputs["conv_features"] = rshp0
         fc1 = slim.fully_connected(rshp0, fc_dim, activation_fn=act_func)
         fc2 = slim.fully_connected(fc1, fc_dim, activation_fn=act_func)
         fc3 = slim.fully_connected(fc2, z_dim, activation_fn=act_func)
+        fc4 = slim.fully_connected(fc3, encout_dim, activation_fn=None) # encOut 512 dim a/c to EPCG, No activation func for final layer 
 
-        outputs["z_latent"] = fc1
-        outputs['ids'] = fc3
+        outputs["z_latent"] = fc1 # [B, 1024]
+        outputs['ids'] = fc3 # [B, 1024]
+        outputs["encoderOut"] = fc4 # [B, 512]
         if cfg.predict_pose:
             outputs['poses'] = slim.fully_connected(fc2, z_dim)
     return outputs
 
-
-def decoder_part(input, cfg):
-    batch_size = input.shape.as_list()[0]
-    fake_input = tf.zeros([batch_size, 128*4*4])
-    act_func = tf.nn.leaky_relu
-
-    fc_dim = cfg.fc_dim
-    z_dim = cfg.z_dim
-
-    # this is unused but needed to match the FC layers in the encoder function
-    fc1 = slim.fully_connected(fake_input, fc_dim, activation_fn=act_func)
-
-    fc2 = slim.fully_connected(input, fc_dim, activation_fn=act_func)
-    fc3 = slim.fully_connected(fc2, z_dim, activation_fn=act_func)
-    return fc3

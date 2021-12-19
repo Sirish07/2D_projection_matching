@@ -10,7 +10,7 @@ memory_size: 128
 pointfeat_dim: 512
 imgfeat_dim: 128
 
-inp_dir: ""  # Directory path containing the input data (tfrecords).
+inp_dir: "../../Datasets/2Dpm/tf_records/"  # Directory path containing the input data (tfrecords).
 synth_set: ""  # Class of Shapenet data
 num_views: 5  # Number of viewpoints in the input data.
 num_views_to_use: -1  # Num of views to actually use.
@@ -26,6 +26,8 @@ decoder_name: "decoder"  # Name of the decoder network being used.
 z_dim: 1024
 f_dim: 16
 fc_dim: 1024
+encout_dim: 512
+image2pc_dim: 64
 
 # Predict points
 pc_num_points: 16000
@@ -169,7 +171,7 @@ gauss_threshold: 1.0
 gauss_bias: 3.0 #3.0
 vis_size: 128
 
-sample_scale: 8000
+sample_scale: 5000
 
 ring_n: 5
 

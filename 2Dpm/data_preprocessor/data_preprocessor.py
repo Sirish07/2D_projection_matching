@@ -25,6 +25,7 @@ class DataPreprocessor(object):
         var_num_views = cfg.variable_num_views
 
         num_views = raw_inputs['image'].get_shape().as_list()[1]
+        # print("Number of views: " + str(num_views))
         quantity = cfg.batch_size
         if cfg.num_views_to_use == -1:
             max_num_views = num_views
@@ -36,8 +37,10 @@ class DataPreprocessor(object):
         def batch_sampler(all_num_views):
             out = np.zeros((0, 2), dtype=np.int64)
             valid_samples = np.zeros((0), dtype=np.float32)
+            # print("Within batch sampler " + str(all_num_views))
             for n in range(quantity):
                 valid_samples_m = np.ones((step_size), dtype=np.float32)
+                # print(quantity, step_size)
                 if var_num_views:
                     num_actual_views = int(all_num_views[n, 0])
                     ids = np.random.choice(num_actual_views, min(step_size, num_actual_views), replace=False)
@@ -60,7 +63,7 @@ class DataPreprocessor(object):
             return out, valid_samples
 
         num_actual_views = raw_inputs['num_views'] if var_num_views else tf.constant([0])
-
+        # print("Actual Number of views: " + str(num_actual_views))
         indices, valid_samples = tf.py_func(batch_sampler, [num_actual_views], [tf.int64, tf.float32])
         indices = tf.reshape(indices, [step_size*quantity, 2])
         inputs['valid_samples'] = tf.reshape(valid_samples, [step_size*quantity])

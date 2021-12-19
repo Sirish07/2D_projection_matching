@@ -3,21 +3,23 @@ import tensorflow.contrib.slim as slim
 
 
 def model(inputs, outputs_all, cfg, is_training):
-    num_points = cfg.pc_num_points
+        # Source : https://github.com/chenhsuanlin/3D-point-cloud-generation/blob/master/graph.py
+        act_fn = tf.nn.leaky_relu
+        # print("Decoder Outputs")
+        with slim.arg_scope(
+                [slim.conv2d_transpose, slim.fully_connected],
+                weights_initializer=tf.contrib.layers.variance_scaling_initializer()):
 
-    init_stddev = cfg.pc_decoder_init_stddev
-    w_init = tf.truncated_normal_initializer(stddev=init_stddev, seed=1)
-    pts_raw = slim.fully_connected(inputs, num_points * 3,
-                                   activation_fn=None,
-                                   weights_initializer=w_init)
+                hf = slim.fully_connected(inputs, 1024, activation_fn=act_fn)
+                hf = slim.fully_connected(hf, 2048, activation_fn=act_fn)
+                hf = slim.fully_connected(hf, 4096, activation_fn=act_fn)
+                hf = tf.reshape(hf,[cfg.batch_size,4,4,-1])
+                feat = slim.conv2d_transpose(hf, 128, 3, 2, activation_fn=act_fn)
+                feat = slim.conv2d_transpose(feat, 64, 3, 2, activation_fn=act_fn)
+                feat = slim.conv2d_transpose(feat, 32, 3, 2, activation_fn=act_fn)
+                feat = slim.conv2d_transpose(feat, 3, 3, 2, activation_fn=act_fn)
 
-    pred_pts = tf.reshape(pts_raw, [pts_raw.shape[0], num_points, 3])
-    pred_pts = tf.tanh(pred_pts)
-    if cfg.pc_unit_cube:
-        pred_pts = pred_pts / 2.0
-
-    out = dict()
-    out["xyz"] = pred_pts
-    out["rgb"] = None
-
-    return out
+        out = dict()
+        out["xyz"] = feat
+        out["rgb"] = None
+        return out
