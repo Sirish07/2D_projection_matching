@@ -110,7 +110,7 @@ def compute_predictions():
         cam_transform = out["cam_transform"]
         z_latent = out["z_latent"]
 
-        input_pc = tf.placeholder(dtype = tf.float32, shape = [1, 16000, 3])
+        input_pc = tf.placeholder(dtype = tf.float32, shape = [1, cfg['pc_num_points'], 3])
         if save_voxels:
             if fast_conversion:
                 # print(input_pc)
@@ -138,10 +138,10 @@ def compute_predictions():
         variables_to_restore = slim.get_variables_to_restore(exclude=["meta"])
 
     restorer = tf.train.Saver(variables_to_restore)
-    #checkpoint_file = tf.train.latest_checkpoint(exp_dir)
-    synthdataset = cfg['synth_set']
-    pretrainedModelPath = os.path.join('./pretrained_model', synthdataset)
-    checkpoint_file = os.path.join(pretrainedModelPath, 'model')
+    checkpoint_file = tf.train.latest_checkpoint(exp_dir)
+    # synthdataset = cfg['synth_set']
+    # pretrainedModelPath = os.path.join('./pretrained_model', synthdataset)
+    # checkpoint_file = os.path.join(pretrainedModelPath, 'model')
 
     print("restoring checkpoint", checkpoint_file)
     restorer.restore(sess, checkpoint_file)

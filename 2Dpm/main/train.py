@@ -6,7 +6,6 @@ import os
 import time
 
 import tensorflow as tf
-
 from models import models
 
 from util.app_config import config as app_config
@@ -51,9 +50,12 @@ def train():
 
     tf.logging.set_verbosity(tf.logging.INFO)
     split_name = 'train'
-    dataset_file = os.path.join(cfg.inp_dir, f"{cfg.synth_set}_{split_name}.tfrecords")
+    dataset_file = os.path.join(cfg.inp_dir, f"{cfg['synth_set']}_{split_name}.tfrecords")
 
     dataset = tf.data.TFRecordDataset(dataset_file, compression_type=tf_record_compression(cfg))
+    trainlen = 4733 - 1 #sum(1 for _ in dataset) - 1 -> 0 based indexing
+    per_epoch_loss = tf.placeholder(dtype=tf.float64)
+
     if cfg.shuffle_dataset:
         dataset = dataset.shuffle(7000)
     dataset = dataset.map(lambda rec: parse_tf_records(cfg, rec), num_parallel_calls=4) \
@@ -64,31 +66,32 @@ def train():
     iterator = dataset.make_one_shot_iterator()
     train_data = iterator.get_next()
 
-    summary_writer = tfsum.create_file_writer(train_dir, flush_millis=10000)
+    global_step = tf.train.get_or_create_global_step()
+    model = models.ModelPointCloud(cfg, global_step)
+    inputs = model.preprocess(train_data, cfg.step_size)
+    
+    model_fn = model.get_model_fn(
+        is_training=True, reuse=False, run_projection=True)
+    outputs = model_fn(inputs)
+    # train_scopes
+    train_scopes = ['encoder', 'decoder']
+    # loss
+    task_loss, c_loss, k_loss, de_loss = model.get_loss(inputs, outputs)
+    reg_loss = regularization_loss(train_scopes, cfg)
+    loss = task_loss #+ reg_loss
+    # optimizer
+    learning_rate = get_learning_rate(cfg, global_step)
+    tf.summary.scalar("Learning_Rate", learning_rate)
+    ## Learning Rate Summary
+    lr_summary_op = tf.summary.merge_all()
+    var_list = get_trainable_variables(train_scopes)
 
-    with summary_writer.as_default(), tfsum.record_summaries_every_n_global_steps(10):
-        global_step = tf.train.get_or_create_global_step()
-        model = models.ModelPointCloud(cfg, global_step)
-        inputs = model.preprocess(train_data, cfg.step_size)
-        
-        model_fn = model.get_model_fn(
-            is_training=True, reuse=False, run_projection=True)
-        outputs = model_fn(inputs)
-        # train_scopes
-        train_scopes = ['encoder', 'decoder']
-        # loss
-        task_loss, c_loss, k_loss, de_loss = model.get_loss(inputs, outputs)
-        reg_loss = regularization_loss(train_scopes, cfg)
-        loss = task_loss #+ reg_loss
+    optimizer = tf.train.AdamOptimizer(learning_rate)
+    train_op = optimizer.minimize(loss, global_step, var_list)
 
-        # summary op
-        summary_op = tfsum.all_summary_ops()
-
-        # optimizer
-        var_list = get_trainable_variables(train_scopes)
-       
-        optimizer = tf.train.AdamOptimizer(get_learning_rate(cfg, global_step))
-        train_op = optimizer.minimize(loss, global_step, var_list)
+    # Epoch Loss summary
+    tf.summary.scalar("Epoch_Loss", per_epoch_loss)
+    loss_summary_op = tf.summary.merge_all()
 
     # saver
     max_to_keep = 120
@@ -99,37 +102,39 @@ def train():
     session_config.gpu_options.allow_growth = cfg.gpu_allow_growth
     session_config.gpu_options.per_process_gpu_memory_fraction = cfg.per_process_gpu_memory_fraction
 
-    sess = tf.Session(config=session_config)
-    with sess, summary_writer.as_default():
+    with tf.Session(config=session_config) as sess:
         tf.global_variables_initializer().run()
         tf.local_variables_initializer().run()
-        tfsum.initialize(graph=tf.get_default_graph())
+        summary_writer = tf.summary.FileWriter(train_dir, flush_secs=10, graph=sess.graph)        
         # # if you want restore model or finetune model, uncomment here.
         # checkpoint_file = os.path.join(train_dir, 'model-{}'.format(cfg.test_step))
         # saver.restore(sess, checkpoint_file)
 
         global_step_val = 0
-        total_loss = 0
+        epoch_loss = 0
+        t0 = time.perf_counter()
         while global_step_val <= cfg.max_number_of_steps:
-            t0 = time.perf_counter()
-            _, loss_val, global_step_val, summary =sess.run([train_op, loss, global_step, summary_op])
-           
+            _, loss_val, global_step_val, lr_summary = sess.run([train_op, loss, global_step, lr_summary_op])
+            summary_writer.add_summary(lr_summary, global_step_val)
             is_nan = np.isnan(loss_val)
             assert(not np.any(is_nan))
-
-            t1 = time.perf_counter()
-            dt = t1 - t0
-            total_loss += loss_val
-            if global_step_val % 1 == 0:
-                total_loss *= 100
-                print(f"step: {global_step_val}, loss = {total_loss:.8f}, {dt:.6f} sec/step)")
-                total_loss = 0
+            epoch_loss += loss_val
+            if global_step_val % trainlen == 0 and global_step_val > 0:
+                epoch_loss *= 100
+                t1 = time.perf_counter()
+                dt = t1 - t0
+                print(f"Un-normalised Loss is = {epoch_loss}")
+                print(f"step: {global_step_val}, loss = {epoch_loss/trainlen:.8f}, {dt:.6f} sec/epoch")
+                loss_summary = sess.run(loss_summary_op, feed_dict = {per_epoch_loss:epoch_loss/trainlen})
+                summary_writer.add_summary(loss_summary, global_step_val)
+                epoch_loss = 0
+                t0 = time.perf_counter()
 
             if global_step_val % 50000 == 0 and global_step_val > 0:
                 saver.save(sess, f"{train_dir}/model", global_step=global_step_val)
 
-            if global_step_val % 50000 == 0 and global_step_val > 0:
-                test_one_step(global_step_val)
+            # if global_step_val % 5000 == 0 and global_step_val > 0:
+            #     test_one_step(global_step_val)
 
 def main(_):
     train()

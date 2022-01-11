@@ -48,7 +48,7 @@ def run_eval(dataset=None):
     num_views = cfg.num_views
     eval_unsup = cfg.eval_unsupervised_shape
 
-    gt_dir = os.path.join(cfg.gt_pc_dir, cfg.synth_set)
+    gt_dir = os.path.join(cfg.gt_pc_dir, cfg['synth_set'])
 
     g = tf.Graph()
     with g.as_default():

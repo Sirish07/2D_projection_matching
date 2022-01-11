@@ -208,7 +208,6 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
     def compute_projection(self, inputs, outputs, is_training):
         cfg = self.cfg()
         all_points = outputs['all_points']
-        
         all_rgb = outputs['all_rgb'] 
         
         if cfg.predict_pose:
@@ -259,7 +258,6 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
             code = 'images' if cfg.predict_pose else 'images_1'
             outputs = self.model_predict(inputs[code], is_training, reuse)
             pc = outputs['points_1']
-            
             if run_projection:
                 all_points = self.replicate_for_multiview(pc)
                 num_candidates = cfg.pose_predict_num_candidates
