@@ -382,15 +382,16 @@ def generate_records(synth_set):
     base_dir = FLAGS.split_dir
     split = load_drc_split(base_dir, synth_set)
     for key, value in split.items():
-            if SAMPLE_TYPE == 1:
-                label = 'pixel2ramdom'
-            elif SAMPLE_TYPE == 2:
-                label = 'pixel2pixel'
-            elif SAMPLE_TYPE == 3:
-                label = 'sas'
-            else:
-                label = 'random'
-            create_record(synth_set, key, value)
+        print(key)
+        if SAMPLE_TYPE == 1:
+            label = 'pixel2ramdom'
+        elif SAMPLE_TYPE == 2:
+            label = 'pixel2pixel'
+        elif SAMPLE_TYPE == 3:
+            label = 'sas'
+        else:
+            label = 'random'
+        create_record(synth_set, key, value)
 
 
 def read_split(filename):

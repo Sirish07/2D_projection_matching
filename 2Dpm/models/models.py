@@ -181,7 +181,8 @@ def fuseallimages(fuseTrans, image2pc, cfg): #[V, H, W, 3]
         t_view = np.tile([0,0,-1.0],[num_views, 1]).astype(np.float32) # took renderDepth=-1 similar to EPCG
         RtHom_view = transParamsToHomMatrix(q_view,t_view)
         RtHomTile_view = tf.tile(tf.expand_dims(RtHom_view,0),[cfg.batch_size,1,1,1])
-        invRtHomTile_view = tf.matrix_inverse(RtHomTile_view)
+        with tf.device("/cpu:0"):
+            invRtHomTile_view = tf.matrix_inverse(RtHomTile_view)
         RtHomTile = tf.matmul(invRtHomTile_view,invKhomTile) # [B,V,4,4]
         RtTile = RtHomTile[:,:,:3,:] # [B,V,3,4]
         XYZhom = get3DhomCoord(XYZ, cfg) # [B,V,4,HW]
@@ -247,7 +248,7 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
         decoder_fn = get_network(cfg.decoder_name)
         with tf.variable_scope('decoder', reuse=reuse):
             key = 'encoderOut'
-            decoder_out = decoder_fn(outputs[key], outputs, cfg, is_training)
+            decoder_out = decoder_fn(outputs[key], cfg, is_training)
             image2pc = decoder_out['xyz']
             outputs['image2pc'] = image2pc
             outputs['scaling_factor'] = predict_scaling_factor(cfg, outputs[key], is_training)
@@ -323,7 +324,7 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
 
             image2pc = tf.stack(image2pc)
             all_scaling_factors = tf.stack(all_scaling_factors)
-            # image2pc = [4, 64, 64, 3], image2pc[0] = [64, 64, 3]
+            # image2pc = [4, 48, 48, 3], image2pc[0] = [48, 48, 3]
             if run_projection:
                 points3D = fuseallimages(inputs['camera_quaternion'], image2pc, cfg) # [B, 3, VHW]
                 points3D = tf.transpose(points3D, perm=[0, 2, 1]) # [B, VHW, 3]

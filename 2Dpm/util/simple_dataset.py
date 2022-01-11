@@ -10,7 +10,7 @@ from util.data import tf_record_options
 
 def tf_records_dataset_filename(cfg):
     filename = cfg['synth_set'] + "_test" + '.tfrecords'
-    return os.path.join(cfg['inp_dir'], filename)
+    return os.path.join("../../Datasets/2Dpm/tf_records_new/", filename)
 
 
 Model3D = namedtuple('Model3D', 'id, name, voxels, mask, image, camera, cam_pos, depth, num_views')
@@ -37,7 +37,14 @@ class Dataset3D:
         num_samples = cfg.num_dataset_samples
 
         print(num_samples)
+
+        modelCount = 0
         for k, string_record in enumerate(record_iterator):
+
+            if modelCount > 100:
+                break
+                
+            modelCount += 1
             if num_samples != -1 and k == num_samples:
                 break
             example = tf.train.Example()

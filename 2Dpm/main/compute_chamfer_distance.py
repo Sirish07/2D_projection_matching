@@ -40,15 +40,16 @@ def run_eval(dataset=None):
         device_count={'GPU': 1}
     )
 
+    print("Completed Predict function")
     cfg = app_config
     setup_environment(cfg)
 
     exp_dir = get_path(cfg)
     exp_dir = os.path.join(exp_dir, str(cfg.vox_size))
-    num_views = cfg.num_views
+    num_views = 1 # multi-view reconstruction
     eval_unsup = cfg.eval_unsupervised_shape
 
-    gt_dir = os.path.join(cfg.gt_pc_dir, cfg.synth_set)
+    gt_dir = os.path.join(cfg.gt_pc_dir, cfg['synth_set'])
 
     g = tf.Graph()
     with g.as_default():
@@ -71,7 +72,14 @@ def run_eval(dataset=None):
 
     model_names = []
     chamfer_dists = np.zeros((0, 1), dtype=np.float64)
+
+    modelCount = 0
     for k in range(num_models):
+
+        if modelCount > 100:
+            break
+        
+        modelCount += 1
         sample = dataset.data[k]
 
         print("{}/{}".format(k, num_models))
@@ -103,7 +111,12 @@ def run_eval(dataset=None):
 
         obj = scipy.io.loadmat(gt_filename)
         Vgt = obj["points"]
-
+        all_pcs = np.expand_dims(all_pcs, axis = 0)
+        print("Printing Predicted Data Range")
+        print(all_pcs.min(), all_pcs.max())
+        print("Groundt truth Data Range")
+        print(Vgt.min(), Vgt.max())
+        
         chamfer_dists_current = np.zeros((num_views, 2), dtype=np.float64)
         for i in range(num_views):
             pred = all_pcs[i, :, :]

@@ -10,11 +10,11 @@ memory_size: 128
 pointfeat_dim: 512
 imgfeat_dim: 128
 
-inp_dir: "../../Datasets/2Dpm/tf_records/"  # Directory path containing the input data (tfrecords).
+inp_dir: "../../Datasets/2Dpm/tf_records_new/"  # Directory path containing the input data (tfrecords).
 synth_set: ""  # Class of Shapenet data
 num_views: 5  # Number of viewpoints in the input data.
 num_views_to_use: -1  # Num of views to actually use.
-tfrecords_gzip_compressed: true  # Compress TF record files.
+tfrecords_gzip_compressed: false  # Compress TF record files.
 image_size: 128  # Input images dimension (pixels) - width & height.
 saved_camera: true
 saved_depth: false
@@ -27,7 +27,7 @@ z_dim: 1024
 f_dim: 16
 fc_dim: 1024
 encout_dim: 512
-image2pc_dim: 64
+image2pc_dim: 48
 
 # Predict points
 pc_num_points: 16000
@@ -108,8 +108,8 @@ checkpoint_dir: "."  # Directory path for saving trained models and other data.
 
 # Execute
 gpu: 0  # GPU id
-gpu_allow_growth: false  # Don't allocate all GPU memory.
-per_process_gpu_memory_fraction: 0.4 # Fraction of GPU memory to allocate
+gpu_allow_growth: true  # Don't allocate all GPU memory.
+per_process_gpu_memory_fraction: 0.9 # Fraction of GPU memory to allocate
 
 pred_topk: 1
 gt_topk: 1
@@ -180,7 +180,7 @@ vis_depth_projs: false
 vis_all_views: false
 # align_to_canonical: false # apply rotation to bring to canonical orientation
 
-save_individual_images: false
+save_individual_images: true
 save_predictions: true  # Write predictions to disk
 save_voxels: true
 save_point_clouds: true
@@ -190,7 +190,7 @@ save_rotated_points: false
 models_list: ""
 
 # Evaluate
-gt_pc_dir: ""
+gt_pc_dir: "../../Datasets/2Dpm/gt/downsampled/"
 eval_split: "val"  # on what subset to run evaluation: val, test or train
 pc_eval_chamfer_num_parts: 10
 eval_unsupervised_shape: false

@@ -10,7 +10,6 @@ def _preprocess(images):
 
 def model(images, cfg, is_training):
     """Model encoding the images into view-invariant embedding."""
-    del is_training  # Unused
     image_size = images.get_shape().as_list()[1]
     target_spatial_size = 4
 
@@ -20,26 +19,31 @@ def model(images, cfg, is_training):
     encout_dim = cfg.encout_dim # 512
     outputs = dict()
 
-    act_func = tf.nn.leaky_relu
+    act_func = tf.nn.relu
 
     images = _preprocess(images)
     with slim.arg_scope(
             [slim.conv2d, slim.fully_connected],
-            weights_initializer=tf.contrib.layers.variance_scaling_initializer()):
+            weights_initializer=tf.contrib.layers.variance_scaling_initializer(),
+            normalizer_fn=slim.batch_norm,
+            normalizer_params={'is_training': is_training},
+            activation_fn=act_func):
+        
         batch_size = images.shape[0]
-        hf = slim.conv2d(images, f_dim, [5, 5], stride=2, activation_fn=act_func)
+        hf = slim.conv2d(images, f_dim, [5, 5], stride=2)
         num_blocks = int(np.log2(image_size / target_spatial_size) - 1)
 
         for k in range(num_blocks):
             f_dim = f_dim * 2
-            hf = slim.conv2d(hf, f_dim, [3, 3], stride=2, activation_fn=act_func)
-            hf = slim.conv2d(hf, f_dim, [3, 3], stride=1, activation_fn=act_func)
+            hf = slim.conv2d(hf, f_dim, [3, 3], stride=2)
+            hf = slim.conv2d(hf, f_dim, [3, 3], stride=1)
+
         # Reshape layer
         rshp0 = tf.reshape(hf, [batch_size, -1])
         outputs["conv_features"] = rshp0
-        fc1 = slim.fully_connected(rshp0, fc_dim, activation_fn=act_func)
-        fc2 = slim.fully_connected(fc1, fc_dim, activation_fn=act_func)
-        fc3 = slim.fully_connected(fc2, z_dim, activation_fn=act_func)
+        fc1 = slim.fully_connected(rshp0, fc_dim)
+        fc2 = slim.fully_connected(fc1, fc_dim)
+        fc3 = slim.fully_connected(fc2, z_dim)
         fc4 = slim.fully_connected(fc3, encout_dim, activation_fn=None) # encOut 512 dim a/c to EPCG, No activation func for final layer 
 
         outputs["z_latent"] = fc1 # [B, 1024]
