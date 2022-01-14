@@ -24,7 +24,7 @@ def model(images, cfg, is_training):
     images = _preprocess(images)
     with slim.arg_scope(
             [slim.conv2d, slim.fully_connected],
-            weights_initializer=tf.contrib.layers.variance_scaling_initializer(),
+            weights_initializer=tf.truncated_normal_initializer(stddev=0.1, seed=1),
             normalizer_fn=slim.batch_norm,
             normalizer_params={'is_training': is_training},
             activation_fn=act_func):
@@ -44,7 +44,7 @@ def model(images, cfg, is_training):
         fc1 = slim.fully_connected(rshp0, fc_dim)
         fc2 = slim.fully_connected(fc1, fc_dim)
         fc3 = slim.fully_connected(fc2, z_dim)
-        fc4 = slim.fully_connected(fc3, encout_dim, activation_fn=None) # encOut 512 dim a/c to EPCG, No activation func for final layer 
+        fc4 = slim.fully_connected(fc3, encout_dim, normalizer_fn=None, activation_fn=None) # encOut 512 dim a/c to EPCG, No activation func for final layer 
 
         outputs["z_latent"] = fc1 # [B, 1024]
         outputs['ids'] = fc3 # [B, 1024]

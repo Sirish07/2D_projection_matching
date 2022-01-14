@@ -40,7 +40,6 @@ def run_eval(dataset=None):
         device_count={'GPU': 1}
     )
 
-    print("Completed Predict function")
     cfg = app_config
     setup_environment(cfg)
 
@@ -75,7 +74,6 @@ def run_eval(dataset=None):
 
     modelCount = 0
     for k in range(num_models):
-
         if modelCount > 100:
             break
         
@@ -111,12 +109,10 @@ def run_eval(dataset=None):
 
         obj = scipy.io.loadmat(gt_filename)
         Vgt = obj["points"]
+        print("Checking 3D points dimension")
+        print(all_pcs.min(), all_pcs.max(), np.mean(all_pcs), np.std(all_pcs))
+        print(Vgt.min(), Vgt.max(), np.mean(Vgt), np.std(Vgt))
         all_pcs = np.expand_dims(all_pcs, axis = 0)
-        print("Printing Predicted Data Range")
-        print(all_pcs.min(), all_pcs.max())
-        print("Groundt truth Data Range")
-        print(Vgt.min(), Vgt.max())
-        
         chamfer_dists_current = np.zeros((num_views, 2), dtype=np.float64)
         for i in range(num_views):
             pred = all_pcs[i, :, :]

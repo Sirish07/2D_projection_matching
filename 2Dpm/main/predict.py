@@ -87,7 +87,7 @@ def compute_predictions():
     cfg.batch_size = 1
     cfg.step_size = 4
 
-    pc_num_points = 9216
+    pc_num_points = cfg['pc_num_points']
     vox_size = cfg.vox_size
     save_pred = cfg.save_predictions
     save_voxels = cfg.save_voxels
@@ -108,7 +108,7 @@ def compute_predictions():
         projs_depth = out["projs_depth"]
         cam_transform = out["cam_transform"]
 
-        input_pc = tf.placeholder(dtype = tf.float32, shape = [1, 9216, 3])
+        input_pc = tf.placeholder(dtype = tf.float32, shape = [1, pc_num_points, 3])
         if save_voxels:
             if fast_conversion:
                 # print(input_pc)
@@ -137,9 +137,6 @@ def compute_predictions():
 
     restorer = tf.train.Saver(variables_to_restore)
     checkpoint_file = tf.train.latest_checkpoint(exp_dir)
-    # synthdataset = cfg['synth_set']
-    # pretrainedModelPath = os.path.join('./pretrained_model', synthdataset)
-    # checkpoint_file = os.path.join(pretrainedModelPath, 'model')
 
     print("restoring checkpoint", checkpoint_file)
     restorer.restore(sess, checkpoint_file)
@@ -153,7 +150,7 @@ def compute_predictions():
 
     dataset = Dataset3D(cfg)
     pose_num_candidates = cfg.pose_predict_num_candidates
-    num_views = cfg.step_size # since multi-view reconstruction
+    num_views = cfg.step_size # only for saving
     plot_h = 4
     plot_w = 6
     num_views = int(min(num_views, plot_h * plot_w / 2))
@@ -175,16 +172,19 @@ def compute_predictions():
             cameras = sample.camera[:num_views]
             cam_pos = sample.cam_pos[:num_views]
 
+        print("{}/{} {}".format(k, num_models, model_name))
+        grid = np.empty((plot_h, plot_w), dtype=object)
         cam_quaternions = quaternion_from_campos_wrapper(cam_pos)
         cam_quaternions = np.reshape(cam_quaternions, (cam_pos.shape[0], 4))
-        print("{}/{}".format(k, num_models))
-
-        grid = np.empty((plot_h, plot_w), dtype=object)
-        all_pcs = np.zeros((1, pc_num_points, 3))
-        all_voxels = np.zeros((1, vox_size, vox_size, vox_size))
+        
+        all_pcs = np.zeros((cfg.batch_size, pc_num_points, 3))
+        all_voxels = np.zeros((cfg.batch_size, vox_size, vox_size, vox_size))
         (pc_np, rgb_np, proj_np, cam_transf_np) = sess.run([point_cloud, rgb, projs, cam_transform],
                                                                feed_dict={input_image: images,
                                                                           cam_quaternion: cam_quaternions})
+
+        print("Checking projection distribution")
+        print(proj_np.min(), proj_np.max(), np.mean(proj_np), np.std(proj_np))
         all_pcs = np.squeeze(pc_np)
         # multiplying by two is necessary because
         # pc->voxel conversion expects points in [-1, 1] range
@@ -209,7 +209,6 @@ def compute_predictions():
         for view_idx in range(num_views):
             input_image_np = images[[view_idx], :, :, :]
             gt_mask_np = masks[[view_idx], :, :, :]
-            proj_tensor = projs
             gt_image = gt_mask_np
 
             if pose_num_candidates == 1:

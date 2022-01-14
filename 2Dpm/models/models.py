@@ -152,22 +152,18 @@ def transParamsToHomMatrix(q,t):
 def get3DhomCoord(XYZ,cfg):
     # Source: https://github.com/chenhsuanlin/3D-point-cloud-generation
 	with tf.name_scope("get3DhomCoord"):
-        # XYZ = [B, 3V, H, W]
-        # tf.concat([XYZ,ones],axis=1) = [B, 3V+4, H, W]
-        # B, 4, 4, -1
 		ones = tf.ones([cfg.batch_size,cfg.step_size,cfg.image2pc_dim, cfg.image2pc_dim]) # [B, 4, H, W]
 		XYZhom = tf.transpose(tf.reshape(tf.concat([XYZ,ones],axis=1),[cfg.batch_size,4,cfg.step_size,-1]),perm=[0,2,1,3])
 	return XYZhom # [B,V,4,HW]
 
-def fuseallimages(fuseTrans, image2pc, cfg): #[V, H, W, 3]
+def fuseallimages(fuseTrans, fusedimages, cfg):
+    # fusedimages = [B, H, W, 3V]
     # Source: https://github.com/chenhsuanlin/3D-point-cloud-generation
     # Code: https://github.com/chenhsuanlin/3D-point-cloud-generation/blob/master/transform.py#L6
-    num_views = image2pc.shape[0]
-    height = image2pc.shape[1]
-    width = image2pc.shape[2]
-    fusedimages = tf.reshape(image2pc, [height, width, -1]) # [H, W, 3V]
-    fusedimages = tf.expand_dims(fusedimages, axis = 0) # [B, H, W, 3V] B = 1
-    # fusedimages = [1, H, W, 3V]
+    num_views = cfg.step_size
+    height = fusedimages.shape[1]
+    width = fusedimages.shape[2]
+    renderDepth = 1.0
     with tf.name_scope("transform_fuse3D"):
         XYZ = tf.transpose(fusedimages,perm=[0, 3, 1, 2]) # [B, 3V, H, W]
         Khom2Dto3Dmatrix = np.array([[int(width),0 ,0,int(width)/2],
@@ -178,7 +174,7 @@ def fuseallimages(fuseTrans, image2pc, cfg): #[V, H, W, 3]
         invKhom = np.linalg.inv(Khom2Dto3Dmatrix)
         invKhomTile = np.tile(invKhom,[cfg.batch_size,num_views,1,1])
         q_view = tf.nn.l2_normalize(fuseTrans,dim=1)
-        t_view = np.tile([0,0,-1.0],[num_views, 1]).astype(np.float32) # took renderDepth=-1 similar to EPCG
+        t_view = np.tile([0,0,-renderDepth],[num_views, 1]).astype(np.float32) # took renderDepth=1 similar to EPCG
         RtHom_view = transParamsToHomMatrix(q_view,t_view)
         RtHomTile_view = tf.tile(tf.expand_dims(RtHom_view,0),[cfg.batch_size,1,1,1])
         with tf.device("/cpu:0"):
@@ -227,11 +223,10 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
             self._pc_for_alignloss = tf.Variable(values, name="point_cloud_for_align_loss",
                                                  dtype=tf.float32)
 
-    def model_predict(self, images, is_training=False, reuse=False, predict_for_all=False, alignment=None):
+    def model_predict(self, images, is_training=False, reuse=False, predict_for_all=True, alignment=None):
         outputs = {}
-        #images shape = [cfg.image_size, cfg.image_size, 3]
+        #images shape = [cfg.step_size, cfg.image_size, cfg.image_size, 3]
         cfg = self._params
-        images = tf.expand_dims(images, axis = 0) # [1, cfg.image_size, cfg.image_size, 3]
         # First, build the encoder
         encoder_fn = get_network(cfg.encoder_name)
         with tf.variable_scope('encoder', reuse=reuse):
@@ -312,21 +307,16 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
         def model(inputs):
             code = 'images'
             num_views = cfg.step_size
-            # image2pc = tf.zeros((num_views, cfg.image2pc_dim, cfg.image2pc_dim, 3))
-            outputs = {}
-            image2pc = []
-            all_scaling_factors = []
             # print(inputs[code].shape) [cfg.step_size, cfg.image_size, cfg.image_size, 3]
-            for view in range(num_views):
-                viewOut = self.model_predict(inputs[code][view], is_training, reuse=tf.AUTO_REUSE)
-                image2pc.append(tf.squeeze(viewOut['image2pc']))
-                all_scaling_factors.append(tf.squeeze(viewOut['scaling_factor']))
-
-            image2pc = tf.stack(image2pc)
-            all_scaling_factors = tf.stack(all_scaling_factors)
-            # image2pc = [4, 48, 48, 3], image2pc[0] = [48, 48, 3]
+            outputs = self.model_predict(inputs[code], is_training, reuse)
+            points3D = outputs['image2pc'][0]
+            for view in range(1, num_views):
+                points3D = tf.concat([points3D, outputs['image2pc'][view]], axis = -1)
+            
+            points3D = tf.expand_dims(points3D, axis = 0)
+            #points3D = [B, H, W, 3V]
             if run_projection:
-                points3D = fuseallimages(inputs['camera_quaternion'], image2pc, cfg) # [B, 3, VHW]
+                points3D = fuseallimages(inputs['camera_quaternion'], points3D, cfg) # [B, 3, VHW]
                 points3D = tf.transpose(points3D, perm=[0, 2, 1]) # [B, VHW, 3]
                 outputs['points3D'] = points3D
                 all_points = self.replicate_for_multiview(points3D) # [4, VHW, 3]
@@ -337,7 +327,7 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
                         all_scaling_factors = tf_repeat_0(all_scaling_factors, num_candidates)
                 else:
                     all_scaling_factors = None
-                outputs['all_scaling_factors'] = all_scaling_factors
+                outputs['all_scaling_factors'] = outputs['scaling_factor']
                 outputs = self.compute_projection(inputs, outputs, is_training)
                 scale = 128 / cfg.vox_size
                 outputs['test_o'] = outputs['coord'] * scale
