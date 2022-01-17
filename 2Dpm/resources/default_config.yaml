@@ -147,13 +147,13 @@ test_model: 40000
 gt_point_n: 5000
 
 
-learning_rate: 0.01 # Learning rate.
+learning_rate: 0.1 # Learning rate.
 learning_rate_step: 1.0  # Learning rate.
 learning_rate_2: 0.00001 # Learning rate.
 weight_decay: 0.001  # Weight decay parameter while training.
 clip_gradient_norm: 0.0  # Gradient clim norm, leave 0 if no gradient clipping.
-each_steps: 25000
-max_number_of_steps: 100000  # Maximum number of steps for training.
+each_steps: 50000
+max_number_of_steps: 600000  # Maximum number of steps for training.
 compute_validation_loss: true
 variable_num_views: false
 

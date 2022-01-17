@@ -126,11 +126,11 @@ def train():
             assert(not np.any(is_nan))
             epoch_loss += loss_val
             
-            if global_step_val % 1000 == 0 and global_step_val > 0:
+            if global_step_val % 50000 == 0 and global_step_val > 0:
                 print("Checking Distributions")
                 print("Decoder Output" + ": " + str(result['image2pc'].min()) + "," + str(result['image2pc'].max()) + "," + str(np.mean(result['image2pc'])) + "," + str(np.std(result['image2pc'])))
-                print("Fused Images Output" + ": " + str(result['points3D'].min()) + "," + str(result['points3D'].max()) + "," + str(np.mean(result['points3D'])) + "," + str(np.std(result['points3D'])))
-                print("2D Projections Output" + ": " + str(result['test_o'].min()) + "," + str(result['test_o'].max()) + "," + str(np.mean(result['test_o'])) + "," + str(np.std(result['test_o'])))
+                print("Fused point clouds Output" + ": " + str(result['points3D'].min()) + "," + str(result['points3D'].max()) + "," + str(np.mean(result['points3D'])) + "," + str(np.std(result['points3D'])))
+                print("2D Projections Output" + ": " + str(result['projs'].min()) + "," + str(result['projs'].max()) + "," + str(np.mean(result['projs'])) + "," + str(np.std(result['projs'])))
 
             if global_step_val % trainlen == 0 and global_step_val > 0:
                 epoch_loss *= 100

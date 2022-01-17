@@ -9,7 +9,7 @@ from util.data import tf_record_options
 
 
 def tf_records_dataset_filename(cfg):
-    filename = cfg['synth_set'] + "_test" + '.tfrecords'
+    filename = cfg['synth_set'] + "_train" + '.tfrecords'
     return os.path.join("../../Datasets/2Dpm/tf_records_new/", filename)
 
 

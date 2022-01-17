@@ -95,6 +95,7 @@ def predict_scaling_factor(cfg, input, is_training):
     if not cfg.pc_learn_occupancy_scaling:
         return None
 
+    input = tf.nn.leaky_relu(input)
     init_stddev = 0.025
     w_init = tf.truncated_normal_initializer(stddev=init_stddev, seed=1)
 
@@ -307,6 +308,7 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
         def model(inputs):
             code = 'images'
             num_views = cfg.step_size
+            print(inputs[code].shape)
             # print(inputs[code].shape) [cfg.step_size, cfg.image_size, cfg.image_size, 3]
             outputs = self.model_predict(inputs[code], is_training, reuse)
             points3D = outputs['image2pc'][0]
@@ -318,6 +320,9 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
             if run_projection:
                 points3D = fuseallimages(inputs['camera_quaternion'], points3D, cfg) # [B, 3, VHW]
                 points3D = tf.transpose(points3D, perm=[0, 2, 1]) # [B, VHW, 3]
+                points3D = tf.tanh(points3D)
+                if cfg.pc_unit_cube:
+                    points3D = points3D / 2.0 
                 outputs['points3D'] = points3D
                 all_points = self.replicate_for_multiview(points3D) # [4, VHW, 3]
                 num_candidates = cfg.pose_predict_num_candidates
