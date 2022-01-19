@@ -35,10 +35,9 @@ def build_model(model):
              'masks':masks,
              'camera_quaternion': cam_quaternion}
     outputs = model_fn(input)
-    cam_transform = tf.no_op()
     outputs["inputs"] = inputs
     outputs["cam_quaternion"] = cam_quaternion
-    outputs["cam_transform"] = cam_transform
+    outputs["cam_transform"] = tf.no_op()
     return outputs
 
 
@@ -157,36 +156,40 @@ def compute_predictions():
 
     num_models = len(model_names)
     modelCount = 0
+    
     for k in range(num_models):
+
         if modelCount > 100:
             break
+
         modelCount += 1
         model_name = model_names[k]
         sample = dataset.sample_by_name(model_name)
 
         images = sample.image[:num_views]
-        masks = sample.mask
+        masks = sample.mask[:num_views]
         if cfg.saved_camera:
             cameras = sample.camera[:num_views]
             cam_pos = sample.cam_pos[:num_views]
 
         print("{}/{} {}".format(k, num_models, sample.name))
         grid = np.empty((plot_h, plot_w), dtype=object)
+        
         cam_quaternions = []
         for view_idx in range(num_views):
             temp_camera = quaternion_from_campos(cam_pos[view_idx, :])
-            cam_quaternions.append(temp_camera)
-        
+            cam_quaternions.append(temp_camera) 
         cam_quaternions = np.stack(cam_quaternions)
         
         all_pcs = np.zeros((cfg.batch_size, pc_num_points, 3))
         all_voxels = np.zeros((cfg.batch_size, vox_size, vox_size, vox_size))
-        (pc_np, proj_np, cam_transf_np) = sess.run([point_cloud,projs, cam_transform],
+
+        (pc_np, proj_np, cam_transf_np) = sess.run([point_cloud, projs, cam_transform],
                                                                feed_dict={input_image: images,
                                                                           cam_quaternion: cam_quaternions})
 
         print("Checking projection distribution")
-        print(proj_np.shape)
+        print(pc_np.min(), pc_np.max(), np.mean(pc_np), np.std(pc_np))
         print(proj_np.min(), proj_np.max(), np.mean(proj_np), np.std(proj_np))
         all_pcs = np.squeeze(pc_np)
         # multiplying by two is necessary because

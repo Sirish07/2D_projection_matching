@@ -24,9 +24,9 @@ def model(images, cfg, is_training):
     images = _preprocess(images)
     with slim.arg_scope(
             [slim.conv2d, slim.fully_connected],
-            weights_initializer=tf.truncated_normal_initializer(stddev=0.1, seed=1),
-            normalizer_fn=slim.batch_norm,
-            normalizer_params={'is_training': is_training},
+            weights_initializer=tf.truncated_normal_initializer(stddev=0.1),
+            normalizer_fn=tf.layers.batch_normalization,
+            normalizer_params={'training': is_training, 'momentum':0.95},
             activation_fn=act_func):
         
         batch_size = images.shape[0]

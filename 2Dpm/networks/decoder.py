@@ -9,9 +9,9 @@ def model(inputs, cfg, is_training):
         view_per_image = 1
         with slim.arg_scope(
                 [slim.conv2d_transpose, slim.fully_connected],
-                weights_initializer=tf.truncated_normal_initializer(stddev=0.1, seed=1),
-                normalizer_fn=slim.batch_norm, 
-                normalizer_params={'is_training': is_training},
+                weights_initializer=tf.truncated_normal_initializer(stddev=0.1),
+                normalizer_fn=tf.layers.batch_normalization, 
+                normalizer_params={'training': is_training, 'momentum': 0.95},
                 activation_fn=act_fn):
 
                 hf = act_fn(inputs)

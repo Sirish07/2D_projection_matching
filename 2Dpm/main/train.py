@@ -126,7 +126,7 @@ def train():
             assert(not np.any(is_nan))
             epoch_loss += loss_val
             
-            if global_step_val % 50000 == 0 and global_step_val > 0:
+            if global_step_val % 1000 == 0 and global_step_val > 0:
                 print("Checking Distributions")
                 print("Decoder Output" + ": " + str(result['image2pc'].min()) + "," + str(result['image2pc'].max()) + "," + str(np.mean(result['image2pc'])) + "," + str(np.std(result['image2pc'])))
                 print("Fused point clouds Output" + ": " + str(result['points3D'].min()) + "," + str(result['points3D'].max()) + "," + str(np.mean(result['points3D'])) + "," + str(np.std(result['points3D'])))
