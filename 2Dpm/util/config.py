@@ -140,11 +140,7 @@ def setup_config_with_cmd_args():
     configs = [{}]
     if "config" in args:
         configs.append(config_from_file(args["config"]))
-    elif os.path.isfile(CONFIG_DEFAULT_NAME):
-        # try load default config file in the directory
-        configs.append(config_from_file(CONFIG_DEFAULT_NAME))
     config = merge_configs_recursive(configs)
-
     cfg = typify_args_bool_only(args)
     config = _merge_a_into_b(cfg, config, type_conversion=True)
     print_config(config)

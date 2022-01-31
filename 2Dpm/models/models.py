@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.io
 import tensorflow as tf
-
+import io
 from data_preprocessor.data_preprocessor import DataPreprocessor, pool_single_view
 
 from util.losses import add_drc_loss, add_proj_rgb_loss, add_proj_depth_loss
@@ -107,7 +107,7 @@ def predict_scaling_factor(cfg, input, is_training):
         pred = tf.sigmoid(pred) * cfg.pc_occupancy_scaling_maximum
 
     if is_training:
-        tf.contrib.summary.scalar("pc_occupancy_scaling_factor", tf.reduce_mean(pred))
+         tf.summary.scalar("pc_occupancy_scaling_factor", tf.reduce_mean(pred))
 
     return pred
 
@@ -127,7 +127,7 @@ def predict_focal_length(cfg, input, is_training):
         out = cfg.focal_length_mean + tf.sigmoid(pred) * cfg.focal_length_range
 
     if is_training:
-        tf.contrib.summary.scalar("meta/focal_length", tf.reduce_mean(out))
+        tf.summary.scalar("meta/focal_length", tf.reduce_mean(out))
 
     return out
 
@@ -204,7 +204,7 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
         cfg = self.cfg()
         sigma_rel = get_smooth_sigma(cfg, self._global_step)
 
-        tf.contrib.summary.scalar("meta/gauss_sigma_rel", sigma_rel)
+        tf.summary.scalar("meta/gauss_sigma_rel", sigma_rel)
         self._sigma_rel = sigma_rel
         self._gauss_sigma = sigma_rel / cfg.vox_size
         self._gauss_kernel = smoothing_kernel(cfg, sigma_rel)
@@ -238,7 +238,6 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
             outputs['ids'] = ids # [B, 1024]
             outputs['z_latent'] = enc_outputs['z_latent'] # [B, 1024]
             outputs['encoderOut'] = enc_outputs['encoderOut'] # [B, 512]
-            outputs['ids_1'] = ids #[B, 1024]
 
         # Second, build the decoder and projector
         decoder_fn = get_network(cfg.decoder_name)
@@ -247,7 +246,6 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
             decoder_out = decoder_fn(outputs[key], cfg, is_training)
             image2pc = decoder_out['xyz']
             outputs['image2pc'] = image2pc
-            outputs['scaling_factor'] = predict_scaling_factor(cfg, outputs[key], is_training)
 
         if self._alignment_to_canonical is not None:
             outputs = align_predictions(outputs, self._alignment_to_canonical)
@@ -275,7 +273,7 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
         if is_training and cfg.pc_point_dropout != 1:
             dropout_prob = self.get_dropout_keep_prob()
             if is_training:
-                tf.contrib.summary.scalar("meta/pc_point_dropout_prob", dropout_prob)
+                tf.summary.scalar("meta/pc_point_dropout_prob", dropout_prob)
             all_points, all_rgb = pc_point_dropout(all_points, all_rgb, cfg.sample_scale / cfg.pc_num_points)
         if cfg.pc_fast:
             predicted_translation = outputs["predicted_translation"] if cfg.predict_translation else None
@@ -308,13 +306,10 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
         def model(inputs):
             code = 'images'
             num_views = cfg.step_size
-            print(inputs[code].shape)
-            # print(inputs[code].shape) [cfg.step_size, cfg.image_size, cfg.image_size, 3]
             outputs = self.model_predict(inputs[code], is_training, reuse)
-            points3D = outputs['image2pc'][0]
-            for view in range(1, num_views):
-                points3D = tf.concat([points3D, outputs['image2pc'][view]], axis = -1)
-            
+            features = tf.concat([outputs['encoderOut'][0], outputs['encoderOut'][1], outputs['encoderOut'][2], outputs['encoderOut'][3]], axis = -1)
+            points3D = tf.concat([outputs['image2pc'][0], outputs['image2pc'][1], outputs['image2pc'][2], outputs['image2pc'][3]], axis = -1)
+            features = tf.expand_dims(features, axis = 0)
             points3D = tf.expand_dims(points3D, axis = 0)
             #points3D = [B, H, W, 3V]
             if run_projection:
@@ -324,15 +319,17 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
                 if cfg.pc_unit_cube:
                     points3D = points3D / 2.0 
                 outputs['points3D'] = points3D
+                scaling_factor = predict_scaling_factor(cfg, features, is_training)
                 all_points = self.replicate_for_multiview(points3D) # [4, VHW, 3]
                 num_candidates = cfg.pose_predict_num_candidates
                 outputs['all_points'] = all_points
                 if cfg.pc_learn_occupancy_scaling:
+                    all_scaling_factors = self.replicate_for_multiview(scaling_factor)
                     if num_candidates > 1:
                         all_scaling_factors = tf_repeat_0(all_scaling_factors, num_candidates)
                 else:
                     all_scaling_factors = None
-                outputs['all_scaling_factors'] = outputs['scaling_factor']
+                outputs['all_scaling_factors'] = all_scaling_factors
                 outputs = self.compute_projection(inputs, outputs, is_training)
                 scale = 128 / cfg.vox_size
                 outputs['test_o'] = outputs['coord'] * scale
@@ -470,7 +467,7 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
         all_loss = tf.reduce_sum(sq_diff, [1, 2, 3]) # [BATCH*VIEWS*CANDIDATES]
         all_loss = tf.reshape(all_loss, [-1, num_candidates]) # [BATCH*VIEWS, CANDIDATES]
         min_loss = tf.argmin(all_loss, axis=1) # [BATCH*VIEWS]
-        tf.contrib.summary.histogram("winning_pose_candidates", min_loss)
+        tf.summary.histogram("winning_pose_candidates", min_loss)
 
         min_loss_mask = tf.one_hot(min_loss, num_candidates) # [BATCH*VIEWS, CANDIDATES]
         num_samples = min_loss_mask.shape[0]
@@ -527,7 +524,7 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
         student_loss /= tf.to_float(num_samples)
 
         if add_summary:
-            tf.contrib.summary.scalar("losses/pose_predictor_student_loss", student_loss)
+            tf.summary.scalar("losses/pose_predictor_student_loss", student_loss)
         student_loss *= cfg.pose_predictor_student_loss_weight
 
         return student_loss
@@ -569,7 +566,7 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
         total_loss += proj_loss
 
         if add_summary:
-            tf.contrib.summary.scalar("losses/proj_loss", proj_loss)
+            tf.summary.scalar("losses/proj_loss", proj_loss)
 
         total_loss *= weight_scale
         return total_loss

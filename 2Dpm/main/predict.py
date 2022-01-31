@@ -133,8 +133,9 @@ def compute_predictions():
         variables_to_restore = slim.get_variables_to_restore(exclude=["meta"])
 
     restorer = tf.train.Saver(variables_to_restore)
-    checkpoint_file = tf.train.latest_checkpoint(exp_dir)
+    # checkpoint_file = tf.train.latest_checkpoint(exp_dir)
 
+    checkpoint_file = os.path.join(exp_dir, 'model-{}'.format(cfg.test_step))
     print("restoring checkpoint", checkpoint_file)
     restorer.restore(sess, checkpoint_file)
 
@@ -175,11 +176,7 @@ def compute_predictions():
         print("{}/{} {}".format(k, num_models, sample.name))
         grid = np.empty((plot_h, plot_w), dtype=object)
         
-        cam_quaternions = []
-        for view_idx in range(num_views):
-            temp_camera = quaternion_from_campos(cam_pos[view_idx, :])
-            cam_quaternions.append(temp_camera) 
-        cam_quaternions = np.stack(cam_quaternions)
+        cam_quaternions = quaternion_from_campos_wrapper(cam_pos)
         
         all_pcs = np.zeros((cfg.batch_size, pc_num_points, 3))
         all_voxels = np.zeros((cfg.batch_size, vox_size, vox_size, vox_size))

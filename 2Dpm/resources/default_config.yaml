@@ -11,7 +11,7 @@ pointfeat_dim: 512
 imgfeat_dim: 128
 
 inp_dir: "../../Datasets/2Dpm/tf_records_new/"  # Directory path containing the input data (tfrecords).
-synth_set: ""  # Class of Shapenet data
+synth_set: "03001627"  # Class of Shapenet data
 num_views: 5  # Number of viewpoints in the input data.
 num_views_to_use: -1  # Num of views to actually use.
 tfrecords_gzip_compressed: false  # Compress TF record files.
@@ -30,7 +30,7 @@ encout_dim: 512
 image2pc_dim: 40
 
 # Predict points
-pc_num_points: 16000
+pc_num_points: 6400
 pc_decoder_init_stddev: 0.025
 pc_point_dropout: 1.0
 pc_point_dropout_scheduled: true
@@ -104,7 +104,7 @@ pc_gauss_filter_gt_switch_off: false
 bicubic_gt_downsampling: false
 
 # Save options
-checkpoint_dir: "."  # Directory path for saving trained models and other data.
+checkpoint_dir: "../Results/"  # Directory path for saving trained models and other data.
 
 # Execute
 gpu: 0  # GPU id
@@ -147,7 +147,7 @@ test_model: 40000
 gt_point_n: 5000
 
 
-learning_rate: 0.1 # Learning rate.
+learning_rate: 0.0001 # Learning rate.
 learning_rate_step: 1.0  # Learning rate.
 learning_rate_2: 0.00001 # Learning rate.
 weight_decay: 0.001  # Weight decay parameter while training.

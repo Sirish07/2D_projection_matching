@@ -4,11 +4,14 @@ import startup
 import numpy as np
 import os
 import time
-
+import io
 import tensorflow as tf
-
 from models import models
-
+import matplotlib
+if os.environ.get('DISPLAY','') == '':
+    print('no display found. Using non-interactive Agg backend')
+    matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 from util.app_config import config as app_config
 from util.system import setup_environment
 from util.train import get_trainable_variables, get_learning_rate_origin, get_learning_rate, get_path
@@ -42,6 +45,18 @@ def parse_tf_records(cfg, serialized):
 
     return tf.parse_single_example(serialized, features)
 
+def gen_plot(data, title):
+    """Create a pyplot plot and save to buffer."""
+    x, y = data[:, 0], data[:, 1]
+    plt.figure()
+    plt.plot(x, y)
+    print(x.shape, y.shape)
+    plt.title(title)
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    return buf
+
 def train():
     cfg = app_config
     setup_environment(cfg)
@@ -57,6 +72,8 @@ def train():
     dataset = tf.data.TFRecordDataset(dataset_file, compression_type=tf_record_compression(cfg))
     trainlen = 4733 - 1 #sum(1 for _ in dataset) - 1 -> 0 based indexing
     per_epoch_loss = tf.placeholder(dtype=tf.float64)
+    plot_buf = tf.placeholder(tf.string)
+    proj_image = tf.placeholder(dtype=tf.float64)
 
     if cfg.shuffle_dataset:
         dataset = dataset.shuffle(7000)
@@ -83,16 +100,21 @@ def train():
     # optimizer
     learning_rate = get_learning_rate(cfg, global_step)
     tf.summary.scalar("Learning_Rate", learning_rate)
-    ## Learning Rate Summary
-    lr_summary_op = tf.summary.merge_all()
+    # Merge all Summaries
+    summary_op = tf.summary.merge_all()
     var_list = get_trainable_variables(train_scopes)
-    
     optimizer = tf.train.AdamOptimizer(learning_rate)
     train_op = optimizer.minimize(loss, global_step, var_list)
 
     # Epoch Loss summary
     tf.summary.scalar("Epoch_Loss", per_epoch_loss)
     loss_summary_op = tf.summary.merge_all()
+    
+    # Image summary
+    image = tf.image.decode_png(plot_buf, channels=4)
+    image = tf.expand_dims(image, 0)  # make it batched
+    image_summary = tf.summary.image("2D_Points", image, max_outputs=1)
+    proj_summary = tf.summary.image("2D_Projection", proj_image)
 
     # saver
     max_to_keep = 120
@@ -107,17 +129,12 @@ def train():
         tf.global_variables_initializer().run()
         tf.local_variables_initializer().run()
         summary_writer = tf.summary.FileWriter(train_dir, flush_secs=10, graph=sess.graph)
-        # # if you want restore model or finetune model, uncomment here.
-        # checkpoint_file = os.path.join(train_dir, 'model-{}'.format(cfg.test_step))
-        # saver.restore(sess, checkpoint_file)
-
         global_step_val = 0
         epoch_loss = 0
         t0 = time.perf_counter()
         while global_step_val <= cfg['max_number_of_steps']:
-            
-            _, loss_val, global_step_val, lr_summary, result = sess.run([train_op, loss, global_step, lr_summary_op, outputs])
-            summary_writer.add_summary(lr_summary, global_step_val)
+            _, loss_val, global_step_val, summary, result, gtmasks, gtpoints = sess.run([train_op, loss, global_step, summary_op, outputs, inputs['masks'], inputs['inpoints']])
+            summary_writer.add_summary(summary, global_step_val)
             temp = result['all_points']
             points3d = result['points3D']
             assert temp[0].all() == temp[1].all()
@@ -131,6 +148,23 @@ def train():
                 print("Decoder Output" + ": " + str(result['image2pc'].min()) + "," + str(result['image2pc'].max()) + "," + str(np.mean(result['image2pc'])) + "," + str(np.std(result['image2pc'])))
                 print("Fused point clouds Output" + ": " + str(result['points3D'].min()) + "," + str(result['points3D'].max()) + "," + str(np.mean(result['points3D'])) + "," + str(np.std(result['points3D'])))
                 print("2D Projections Output" + ": " + str(result['projs'].min()) + "," + str(result['projs'].max()) + "," + str(np.mean(result['projs'])) + "," + str(np.std(result['projs'])))
+                pred =  result['test_o'][0]
+                gt = gtpoints[0]
+                pred_buf = gen_plot(pred,"Predicted Image")
+                gt_buf = gen_plot(gt, "Target Image")
+                
+                pred_image = sess.run(image_summary, feed_dict = {plot_buf: pred_buf.getvalue()})
+                summary_writer.add_summary(pred_image, global_step_val)
+                pred_mask = np.expand_dims(result['projs'][0], axis = 0)
+                pred2D = sess.run(proj_summary, feed_dict = {proj_image: pred_mask})
+                summary_writer.add_summary(pred2D, global_step_val)
+
+                gt_image = sess.run(image_summary, feed_dict = {plot_buf: gt_buf.getvalue()})
+                summary_writer.add_summary(gt_image, global_step_val)
+                gt_mask = np.expand_dims(gtmask[0], axis = 0)
+                gt2D = sess.run(proj_summary, feed_dict = {proj_image: gt_mask})
+                summary_writer.add_summary(gt2D, global_step_val)
+                
 
             if global_step_val % trainlen == 0 and global_step_val > 0:
                 epoch_loss *= 100

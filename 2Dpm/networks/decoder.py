@@ -23,8 +23,8 @@ def model(inputs, cfg, is_training):
                 feat = slim.conv2d_transpose(feat, 128, 3, 2) # [B, 16, 16, 128]
                 feat = slim.conv2d_transpose(feat, 96, 3, 2) # [B, 32, 32, 96]
                 feat = slim.conv2d_transpose(feat, 64, 9, 1, padding = 'VALID') # [B, 40, 40, 64]
-                
-                feat = pixelconv2Layer(cfg, feat, view_per_image*4) # [B, 40, 40, 4]
+                with tf.variable_scope("pixelconv"):
+                        feat = pixelconv2Layer(cfg, feat, view_per_image*4) # [B, 40, 40, 4]
                 XYZ,_ = tf.split(feat,[view_per_image*3,view_per_image],axis=3) # [B,H,W,3V],[B,H,W,V]
 
         out = dict()
