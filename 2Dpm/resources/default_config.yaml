@@ -27,10 +27,10 @@ z_dim: 1024
 f_dim: 16
 fc_dim: 1024
 encout_dim: 512
-image2pc_dim: 40
+image2pc_dim: 34
 
 # Predict points
-pc_num_points: 6400
+pc_num_points: 4624
 pc_decoder_init_stddev: 0.025
 pc_point_dropout: 1.0
 pc_point_dropout_scheduled: true
@@ -120,12 +120,12 @@ batch_size: 1 # Batch size while training.
 shuffle_batch: false  # Shuffle training samples.
 shuffle_dataset: false  # Shuffle training samples.
 
-proj_weight: 0.0  # Weighting factor for projection loss.
+proj_weight: 1.0  # Weighting factor for projection loss.
 drc_weight: 0.0  # Weighting factor for projection loss.
 proj_rgb_weight: 0.0  # Weighting factor for rgb projection loss.
 drc_rgb_weight: 0.0  # Weighting factor for rgb drc loss.
 proj_depth_weight: 0.0  # Weighting factor for depth proj loss.
-sum_weight: 0.0 # Weighting factor for entropy loss.
+sum_weight: 1.0 # Weighting factor for entropy loss.
 thermodynamic_weight: 0.0 # Weighting factor for thermodynamic loss.
 cd_weight: 1.0 # Weighting factor for chamfer distance loss.
 emd_weight: 0.0 # Weighting factor for Earth Move Distance loss.
@@ -135,7 +135,7 @@ cos_weight: 0.0 # Weighting factor for cosine loss.
 df_weight: 0.0 # Weighting factor for DF loss.
 fuzz_weight: 0.0 # Weighting factor for fuzz point cloud loss.
 interpolation_kl_weight: 0.0 # Weighting factor for Kullback-Leibler divergence loss on interpolation pixel value.
-topk_cd_weight: 0.0 # Weighting factor for topk minimum distance loss.
+topk_cd_weight: 1.0 # Weighting factor for topk minimum distance loss.
 classify_weight: 0.0 # Weighting factor for classification loss.
 opt_weight: 0.0 # Weighting factor for opt loss.
 flow_weight: 0.0 # Weighting factor for points density loss like water flowing..
@@ -153,7 +153,7 @@ learning_rate_2: 0.00001 # Learning rate.
 weight_decay: 0.001  # Weight decay parameter while training.
 clip_gradient_norm: 0.0  # Gradient clim norm, leave 0 if no gradient clipping.
 each_steps: 50000
-max_number_of_steps: 600000  # Maximum number of steps for training.
+max_number_of_steps: 600000 # Maximum number of steps for training.
 compute_validation_loss: true
 variable_num_views: false
 
@@ -215,3 +215,5 @@ render_colored_subsets: false
 std: 0.1 # standard deviation for weight initialization
 BNepsilon: 0.00001
 BNdecay: 0.999
+
+max_test_steps: 100

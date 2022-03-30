@@ -32,6 +32,7 @@ class DataPreprocessor(object):
             max_num_views = cfg.num_views_to_use
 
         inputs = dict()
+        inputs['name'] = raw_inputs['name']
 
         def batch_sampler(all_num_views):
             out = np.zeros((0, 2), dtype=np.int64)

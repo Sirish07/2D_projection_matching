@@ -287,6 +287,7 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
             outputs["drc_probs"] = proj_out["drc_probs"]
             outputs["projs_depth"] = proj_out["proj_depth"]
             outputs["coord"] = proj_out["coord"]
+            outputs["voxels"] = proj_out["voxels"]
         else:
             proj, voxels = pointcloud_project(cfg, all_points, camera_pose, self.gauss_sigma())
             outputs["projs_rgb"] = None
@@ -571,9 +572,11 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
         total_loss *= weight_scale
         return total_loss
         
-    def add_sum_entropy_distance_loss(self, inputs, outputs, weight_scale, weight_scale2, add_summary):
+    def add_sum_entropy_distance_loss(self, inputs, outputs, weight_scale, weight_scale2, add_summary = True):
         cfg = self.cfg()
         pred = outputs['coord']
+        print("Entropy Distance")
+        print(pred.shape)
         pixels_weight = tf.squeeze(self.bilinear_sampler(pred, inputs['masks']),2)
         pixels_weight_tile = tf.tile(tf.expand_dims(pixels_weight,1),[1,cfg.pc_num_points,1])
 
@@ -713,8 +716,9 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
 
     def add_kl_divergence_loss(self, inputs, outputs, weight_scale, add_summary=True):
         cfg = self.cfg()
+        n = cfg.pc_num_points
         pred = outputs['test_o']
-        gt = inputs['inpoints'][:,:2000,:2]
+        gt = inputs['inpoints'][:,:n,:2]
         pred = pred / 128.0
         gt = gt / 128.0
         loss = kl_distance(gt, pred)
@@ -790,6 +794,7 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
             mat_sum = tf.expand_dims(tf.reduce_sum(matrix, 2), 2)
             return tf.divide(matrix, mat_sum)
 
+        cfg = self.cfg()
         n = cfg.pc_num_points
         pred = outputs['test_o'][:,:,:]
         gt = inputs['inpoints'][:,:n,:2] 
@@ -799,10 +804,10 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
         outputs['A'] = A
         B = euclidean_distance_for_two_points(gt, pred)
         B_exp = tf.exp(-tf.square(B))
-        BI = self.normalization(B_exp)
+        BI = normalization(B_exp)
         C = euclidean_distance_self(gt)
         C_exp = tf.exp(-tf.square(C))
-        CI = self.normalization(C_exp)
+        CI = normalization(C_exp)
         D = BI * A
         F = CI * B
         D_sum = tf.reduce_sum(D, 2)
@@ -911,6 +916,7 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
         cfg = self.cfg()
         pred = outputs['test_o']
         gt = inputs['inpoints']
+        print(pred.shape, gt.shape)
         pred = pred / 128.0
         gt = gt / 128.0
         mindis1 = chamfer_distance_topk(gt, pred, cfg.gt_topk)
@@ -961,8 +967,8 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
  
         if cfg.cd_weight:
             cd1_loss, cd2_loss = self.add_another_cd_loss(inputs, outputs, cfg.cd_weight, add_summary)
-            g_loss += cd1_loss
-            g_loss += cd2_loss
+            g_loss += cd1_loss * 100
+            g_loss += cd2_loss * 100
         else:
             cd1_loss = tf.zeros(dtype=tf.float32, shape=[])
             cd2_loss = tf.zeros(dtype=tf.float32, shape=[])

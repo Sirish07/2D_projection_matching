@@ -30,6 +30,7 @@ def parse_tf_records(cfg, serialized):
 
     # A dictionary from TF-Example keys to tf.FixedLenFeature instance.
     features = {
+        'name': tf.FixedLenFeature([1], tf.string),
         'image': tf.FixedLenFeature([num_views, image_size, image_size, 3], tf.float32),
         'mask': tf.FixedLenFeature([num_views, image_size, image_size, 1], tf.float32),
         'inpoints':tf.FixedLenFeature([num_views, cfg.gt_point_n, 2], tf.float32),
@@ -129,10 +130,12 @@ def train():
         tf.global_variables_initializer().run()
         tf.local_variables_initializer().run()
         summary_writer = tf.summary.FileWriter(train_dir, flush_secs=10, graph=sess.graph)
+        # checkpoint_file = os.path.join("../Results/Final_Run/32/", 'model-{}'.format(600000))
+        # saver.restore(sess, checkpoint_file)
         global_step_val = 0
         epoch_loss = 0
         t0 = time.perf_counter()
-        while global_step_val <= cfg['max_number_of_steps']:
+        while global_step_val <= cfg.max_number_of_steps:
             _, loss_val, global_step_val, summary, result, gtmasks, gtpoints = sess.run([train_op, loss, global_step, summary_op, outputs, inputs['masks'], inputs['inpoints']])
             summary_writer.add_summary(summary, global_step_val)
             temp = result['all_points']
@@ -161,13 +164,12 @@ def train():
 
                 gt_image = sess.run(image_summary, feed_dict = {plot_buf: gt_buf.getvalue()})
                 summary_writer.add_summary(gt_image, global_step_val)
-                gt_mask = np.expand_dims(gtmask[0], axis = 0)
+                gt_mask = np.expand_dims(gtmasks[0], axis = 0)
                 gt2D = sess.run(proj_summary, feed_dict = {proj_image: gt_mask})
                 summary_writer.add_summary(gt2D, global_step_val)
                 
 
             if global_step_val % trainlen == 0 and global_step_val > 0:
-                epoch_loss *= 100
                 t1 = time.perf_counter()
                 dt = t1 - t0
                 print(f"Un-normalised Loss is = {epoch_loss}")
@@ -180,7 +182,7 @@ def train():
             if global_step_val % 50000 == 0 and global_step_val > 0:
                 saver.save(sess, f"{train_dir}/model", global_step=global_step_val)
 
-            # if global_step_val % 50000 == 0 and global_step_val > 0:
+            # if global_step_val == cfg.max_number_of_steps:
             #     test_one_step(global_step_val)
 
 def main(_):

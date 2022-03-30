@@ -35,21 +35,15 @@ class Dataset3D:
         data = []
         quickie = {}
         num_samples = cfg.num_dataset_samples
-
-        print(num_samples)
-
         modelCount = 0
         for k, string_record in enumerate(record_iterator):
 
             if modelCount > 100:
                 break
-                
             modelCount += 1
-            if num_samples != -1 and k == num_samples:
-                break
+
             example = tf.train.Example()
             example.ParseFromString(string_record)
-
             byte_list = example.features.feature['name'].bytes_list.value[0]
             model_name = byte_list.decode('UTF-8')
             sys.stdout.write('.')
