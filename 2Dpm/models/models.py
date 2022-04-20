@@ -575,8 +575,6 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
     def add_sum_entropy_distance_loss(self, inputs, outputs, weight_scale, weight_scale2, add_summary = True):
         cfg = self.cfg()
         pred = outputs['coord']
-        print("Entropy Distance")
-        print(pred.shape)
         pixels_weight = tf.squeeze(self.bilinear_sampler(pred, inputs['masks']),2)
         pixels_weight_tile = tf.tile(tf.expand_dims(pixels_weight,1),[1,cfg.pc_num_points,1])
 

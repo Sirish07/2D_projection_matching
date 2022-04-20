@@ -125,11 +125,11 @@ drc_weight: 0.0  # Weighting factor for projection loss.
 proj_rgb_weight: 0.0  # Weighting factor for rgb projection loss.
 drc_rgb_weight: 0.0  # Weighting factor for rgb drc loss.
 proj_depth_weight: 0.0  # Weighting factor for depth proj loss.
-sum_weight: 1.0 # Weighting factor for entropy loss.
+sum_weight: 0.0 # Weighting factor for entropy loss.
 thermodynamic_weight: 0.0 # Weighting factor for thermodynamic loss.
 cd_weight: 1.0 # Weighting factor for chamfer distance loss.
 emd_weight: 0.0 # Weighting factor for Earth Move Distance loss.
-kl_weight: 0.0 # Weighting factor for Kullback-Leibler divergence loss.
+kl_weight: 1.0 # Weighting factor for Kullback-Leibler divergence loss.
 exp_weight: 0.0 # Weighting factor for exponential loss.
 cos_weight: 0.0 # Weighting factor for cosine loss.
 df_weight: 0.0 # Weighting factor for DF loss.
@@ -216,4 +216,4 @@ std: 0.1 # standard deviation for weight initialization
 BNepsilon: 0.00001
 BNdecay: 0.999
 
-max_test_steps: 100
+max_test_steps: 1000

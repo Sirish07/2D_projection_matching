@@ -18,7 +18,7 @@ class DataPreprocessor(object):
     def cfg(self):
         return self._params
 
-    def preprocess(self, raw_inputs, step_size, random_views=True):
+    def preprocess(self, raw_inputs, step_size, random_views=False):
         """Selects the subset of viewpoints to train on."""
         cfg = self.cfg()
 
@@ -63,6 +63,7 @@ class DataPreprocessor(object):
         num_actual_views = raw_inputs['num_views'] if var_num_views else tf.constant([0])
         indices, valid_samples = tf.py_func(batch_sampler, [num_actual_views], [tf.int64, tf.float32])
         indices = tf.reshape(indices, [step_size*quantity, 2])
+        inputs['indices'] = indices
         inputs['valid_samples'] = tf.reshape(valid_samples, [step_size*quantity])
 
         inputs['masks'] = tf.gather_nd(raw_inputs['mask'], indices)
