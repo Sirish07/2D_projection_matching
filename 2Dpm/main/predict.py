@@ -4,7 +4,7 @@ import numpy as np
 import imageio
 import scipy.io
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import tensorflow.contrib.slim as slim
 
 from models import models
@@ -125,10 +125,10 @@ def compute_predictions():
         variables_to_restore = slim.get_variables_to_restore(exclude=["meta"])
         restorer = tf.train.Saver(variables_to_restore)
 
-        checkpoint_file = os.path.join("../Results/Final_Run/32/", 'model-{}'.format(600000))
+        checkpoint_file = os.path.join("../model/", 'model-{}'.format(600000))
         restorer.restore(sess, checkpoint_file)
         count = 0
-        while count <= cfg.max_test_steps:
+        while count < cfg.max_test_steps:
             result, images, gtmasks, gtpoints, byte_list = sess.run([outputs, inputs['images'], inputs['masks'], inputs['inpoints'], inputs['name'][0]])
             model_name = byte_list[0].decode('UTF-8')
             print("{}/{}: {}".format(count, cfg.max_test_steps, model_name))

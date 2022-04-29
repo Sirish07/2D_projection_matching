@@ -5,7 +5,7 @@ import numpy as np
 import os
 import time
 import io
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from models import models
 import matplotlib
 if os.environ.get('DISPLAY','') == '':
@@ -21,7 +21,7 @@ from util.data import tf_record_compression
 import tensorflow.contrib.slim as slim
 from scipy.io import loadmat
 from main.predict_eval import test_one_step
-tfsum = tf.contrib.summary
+import tensorflow.contrib.summary as tfsum
 
 
 def parse_tf_records(cfg, serialized):

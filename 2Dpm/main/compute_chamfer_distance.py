@@ -6,7 +6,7 @@ import os
 
 import numpy as np
 import scipy.io
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from models import models
 from util.system import setup_environment
 from util.train import get_path
@@ -71,7 +71,7 @@ def run_eval(dataset=None):
         tf.global_variables_initializer().run()
         tf.local_variables_initializer().run()
         count = 0
-        while count <= cfg.max_test_steps:
+        while count < cfg.max_test_steps:
             byte_list = sess.run([inputs['name'][0][0]])
             model_name = byte_list[0].decode('UTF-8')
             print("{}/{}: {}".format(count, cfg.max_test_steps, model_name))

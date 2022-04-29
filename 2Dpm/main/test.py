@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import startup
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from main.predict_eval import test_one_step
 from util.app_config import config as app_config
 

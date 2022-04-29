@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.io
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import io
 from data_preprocessor.data_preprocessor import DataPreprocessor, pool_single_view
 
@@ -20,8 +20,7 @@ from util.quaternion import \
 
 from networks.net_factory import get_network
 import imageio
-
-slim = tf.contrib.slim
+import tensorflow.contrib.slim as slim
 
 
 def tf_repeat_0(input, num):
@@ -143,7 +142,7 @@ def quaternionToRotMatrix(q):
 def transParamsToHomMatrix(q,t):
     # Source: https://github.com/chenhsuanlin/3D-point-cloud-generation
 	with tf.name_scope("transParamsToHomMatrix"):
-		N = tf.shape(q)[0]
+		N = q.shape[0]
 		R = quaternionToRotMatrix(q)
 		Rt = tf.concat([R,tf.expand_dims(t,-1)],axis=2)
 		hom_aug = tf.concat([tf.zeros([N,1,3]),tf.ones([N,1,1])],axis=2)

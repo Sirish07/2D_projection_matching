@@ -1,4 +1,5 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+import tensorflow as tensorflow 
 
 from util.gauss_kernel import gauss_smoothen_image
 
@@ -15,7 +16,7 @@ def regularization_loss(scopes, cfg, postfix=""):
             if scope_vars_w:
                 reg_loss += tf.add_n([tf.nn.l2_loss(var) for var in scope_vars_w])
 
-    tf.contrib.summary.scalar("losses/reg_loss" + postfix, reg_loss)
+    tensorflow.contrib.summary.scalar("losses/reg_loss" + postfix, reg_loss)
     reg_loss *= cfg.weight_decay
     return reg_loss
 
@@ -131,6 +132,6 @@ def add_proj_depth_loss(cfg, inputs, outputs, weight_scale, sigma_rel, add_summa
     proj_loss = tf.nn.l2_loss(gt - pred)
     proj_loss /= tf.to_float(num_samples)
     if add_summary:
-        tf.contrib.summary.scalar("losses/proj_loss", proj_loss)
+        tensorflow.contrib.summary.scalar("losses/proj_loss", proj_loss)
     proj_loss *= weight_scale
     return proj_loss

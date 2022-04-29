@@ -2,7 +2,7 @@
 
 import startup
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from main import train
 from main.predict_eval import compute_eval

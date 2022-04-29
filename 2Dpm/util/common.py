@@ -1,5 +1,5 @@
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 def build_command_line_args(pairs, as_string=True):
     if as_string:
