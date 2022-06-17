@@ -26,7 +26,12 @@ def model(inputs, cfg, is_training):
                 with tf.variable_scope("pixelconv"):
                         feat = pixelconv2Layer(cfg, feat, view_per_image*4) # [B, 40, 40, 4]
                 XYZ,_ = tf.split(feat,[view_per_image*3,view_per_image],axis=3) # [B,H,W,3V],[B,H,W,V]
+                XYZ = tf.reshape(XYZ, [1, XYZ.shape[0] * XYZ.shape[1] * XYZ.shape[2], 3]) # [1, B * H * W, 3]
 
+                XYZ = tf.tanh(XYZ)
+                if cfg.pc_unit_cube:
+                    XYZ = XYZ / 2.0 
+                    
         out = dict()
         out["xyz"] = XYZ
         out["rgb"] = None

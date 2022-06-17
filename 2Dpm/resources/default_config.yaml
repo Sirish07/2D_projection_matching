@@ -104,7 +104,7 @@ pc_gauss_filter_gt_switch_off: false
 bicubic_gt_downsampling: false
 
 # Save options
-checkpoint_dir: "../Results/"  # Directory path for saving trained models and other data.
+checkpoint_dir: "../EPCG Modified/"  # Directory path for saving trained models and other data.
 
 # Execute
 gpu: 0  # GPU id

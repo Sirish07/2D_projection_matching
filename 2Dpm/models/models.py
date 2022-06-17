@@ -243,8 +243,8 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
         with tf.variable_scope('decoder', reuse=reuse):
             key = 'encoderOut'
             decoder_out = decoder_fn(outputs[key], cfg, is_training)
-            image2pc = decoder_out['xyz']
-            outputs['image2pc'] = image2pc
+            pc = decoder_out['xyz']
+            outputs['points_1'] = pc
 
         if self._alignment_to_canonical is not None:
             outputs = align_predictions(outputs, self._alignment_to_canonical)
@@ -307,20 +307,12 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
             code = 'images'
             num_views = cfg.step_size
             outputs = self.model_predict(inputs[code], is_training, reuse)
+            pc = outputs['points_1']
             features = tf.concat([outputs['encoderOut'][0], outputs['encoderOut'][1], outputs['encoderOut'][2], outputs['encoderOut'][3]], axis = -1)
-            points3D = tf.concat([outputs['image2pc'][0], outputs['image2pc'][1], outputs['image2pc'][2], outputs['image2pc'][3]], axis = -1)
             features = tf.expand_dims(features, axis = 0)
-            points3D = tf.expand_dims(points3D, axis = 0)
-            #points3D = [B, H, W, 3V]
             if run_projection:
-                points3D = fuseallimages(inputs['camera_quaternion'], points3D, cfg) # [B, 3, VHW]
-                points3D = tf.transpose(points3D, perm=[0, 2, 1]) # [B, VHW, 3]
-                points3D = tf.tanh(points3D)
-                if cfg.pc_unit_cube:
-                    points3D = points3D / 2.0 
-                outputs['points3D'] = points3D
                 scaling_factor = predict_scaling_factor(cfg, features, is_training)
-                all_points = self.replicate_for_multiview(points3D) # [4, VHW, 3]
+                all_points = self.replicate_for_multiview(pc) # [4, VHW, 3]
                 num_candidates = cfg.pose_predict_num_candidates
                 outputs['all_points'] = all_points
                 if cfg.pc_learn_occupancy_scaling:

@@ -71,7 +71,7 @@ def train():
     print(dataset_file)
 
     dataset = tf.data.TFRecordDataset(dataset_file, compression_type=tf_record_compression(cfg))
-    trainlen = 4733 - 1 #sum(1 for _ in dataset) - 1 -> 0 based indexing
+    trainlen = 4733 - 1 #sum(1 for _ in dataset) - 1
     per_epoch_loss = tf.placeholder(dtype=tf.float64)
     plot_buf = tf.placeholder(tf.string)
     proj_image = tf.placeholder(dtype=tf.float64)
@@ -92,6 +92,7 @@ def train():
     model_fn = model.get_model_fn(
         is_training=True, reuse=False, run_projection=True)
     outputs = model_fn(inputs)
+
     # train_scopes
     train_scopes = ['encoder', 'decoder']
     # # loss
@@ -139,17 +140,16 @@ def train():
             _, loss_val, global_step_val, summary, result, gtmasks, gtpoints = sess.run([train_op, loss, global_step, summary_op, outputs, inputs['masks'], inputs['inpoints']])
             summary_writer.add_summary(summary, global_step_val)
             temp = result['all_points']
-            points3d = result['points3D']
+            points3d = result['points_1']
             assert temp[0].all() == temp[1].all()
             assert temp[0].all() == points3d.all()
             is_nan = np.isnan(loss_val)
             assert(not np.any(is_nan))
             epoch_loss += loss_val
-            
+
             if global_step_val % 1000 == 0 and global_step_val > 0:
                 print("Checking Distributions")
-                print("Decoder Output" + ": " + str(result['image2pc'].min()) + "," + str(result['image2pc'].max()) + "," + str(np.mean(result['image2pc'])) + "," + str(np.std(result['image2pc'])))
-                print("Fused point clouds Output" + ": " + str(result['points3D'].min()) + "," + str(result['points3D'].max()) + "," + str(np.mean(result['points3D'])) + "," + str(np.std(result['points3D'])))
+                print("Fused point clouds Output" + ": " + str(result['points_1'].min()) + "," + str(result['points_1'].max()) + "," + str(np.mean(result['points_1'])) + "," + str(np.std(result['points_1'])))
                 print("2D Projections Output" + ": " + str(result['projs'].min()) + "," + str(result['projs'].max()) + "," + str(np.mean(result['projs'])) + "," + str(np.std(result['projs'])))
                 pred =  result['test_o'][0]
                 gt = gtpoints[0]
@@ -173,8 +173,8 @@ def train():
                 t1 = time.perf_counter()
                 dt = t1 - t0
                 print(f"Un-normalised Loss is = {epoch_loss}")
-                print(f"step: {global_step_val}, loss = {epoch_loss/trainlen:.8f}, {dt:.6f} sec/epoch")
-                loss_summary = sess.run(loss_summary_op, feed_dict = {per_epoch_loss:epoch_loss/trainlen})
+                print(f"step: {global_step_val}, loss = {epoch_loss/(trainlen + 1):.8f}, {dt:.6f} sec/epoch")
+                loss_summary = sess.run(loss_summary_op, feed_dict = {per_epoch_loss:epoch_loss/(trainlen + 1)})
                 summary_writer.add_summary(loss_summary, global_step_val)
                 epoch_loss = 0
                 t0 = time.perf_counter()

@@ -125,7 +125,7 @@ def compute_predictions():
         variables_to_restore = slim.get_variables_to_restore(exclude=["meta"])
         restorer = tf.train.Saver(variables_to_restore)
 
-        checkpoint_file = os.path.join("../model/", 'model-{}'.format(600000))
+        checkpoint_file = os.path.join("../Baseline Results/lr-0.0001_dataset-03001627_pointn-6400_gtp-5000/32", 'model-{}'.format(600000))
         restorer.restore(sess, checkpoint_file)
         count = 0
         while count < cfg.max_test_steps:
@@ -151,11 +151,11 @@ def compute_predictions():
             
             if save_pred:
                 if cfg.save_as_mat:
-                    save_dict = {"points": result['points3D']}
+                    save_dict = {"points": result['points_1']}
                     scipy.io.savemat("{}/{}_pc".format(save_pred_dir, model_name),
                                     mdict=save_dict)
                 else:
-                    np.savez("{}/{}_pc".format(save_pred_dir, model_name), result['points3D'])
+                    np.savez("{}/{}_pc".format(save_pred_dir, model_name), result['points_1'])
 
                 if save_voxels:
                     np.savez("{}/{}_vox".format(save_pred_dir, model_name), result['voxels'])
