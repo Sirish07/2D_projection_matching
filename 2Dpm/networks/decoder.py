@@ -14,26 +14,14 @@ def model(inputs, cfg, is_training):
                 normalizer_params={'training': is_training, 'momentum': 0.95},
                 activation_fn=act_fn):
 
-                hf = act_fn(inputs)
-                hf = slim.fully_connected(hf, 1024)
-                hf = slim.fully_connected(hf, 2048)
-                hf = slim.fully_connected(hf, 4096)
-                hf = tf.reshape(hf,[cfg.step_size,4,4,-1]) # [B, 4, 4, 256]
-                feat = slim.conv2d_transpose(hf, 192, 3, 2) # [B, 8, 8, 192]
-                feat = slim.conv2d_transpose(feat, 128, 3, 2) # [B, 16, 16, 128]
-                feat = slim.conv2d_transpose(feat, 96, 3, 2) # [B, 32, 32, 96]
-                feat = slim.conv2d_transpose(feat, 64, 9, 1, padding = 'VALID') # [B, 40, 40, 64]
-                with tf.variable_scope("pixelconv"):
-                        feat = pixelconv2Layer(cfg, feat, view_per_image*4) # [B, 40, 40, 4]
-                XYZ,_ = tf.split(feat,[view_per_image*3,view_per_image],axis=3) # [B,H,W,3V],[B,H,W,V]
-                XYZ = tf.reshape(XYZ, [1, XYZ.shape[0] * XYZ.shape[1] * XYZ.shape[2], 3]) # [1, B * H * W, 3]
-
-                XYZ = tf.tanh(XYZ)
+                pts_raw = slim.fully_connected(inputs, 1600 * 3)
+                pred_pts = tf.reshape(pts_raw, [1, 6400, 3])
+                pred_pts = tf.tanh(pred_pts)
                 if cfg.pc_unit_cube:
-                    XYZ = XYZ / 2.0 
-                    
+                        pred_pts = pred_pts / 2.0
+
         out = dict()
-        out["xyz"] = XYZ
+        out["xyz"] = pred_pts
         out["rgb"] = None
         return out
 
