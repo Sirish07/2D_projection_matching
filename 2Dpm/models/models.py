@@ -245,6 +245,7 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
             decoder_out = decoder_fn(outputs[key], cfg, is_training)
             pc = decoder_out['xyz']
             outputs['points_1'] = pc
+            outputs['scaling_factor'] = predict_scaling_factor(cfg, outputs[key], is_training)
 
         if self._alignment_to_canonical is not None:
             outputs = align_predictions(outputs, self._alignment_to_canonical)
@@ -308,20 +309,10 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
             num_views = cfg.step_size
             outputs = self.model_predict(inputs[code], is_training, reuse)
             pc = outputs['points_1']
-            features = tf.concat([outputs['encoderOut'][0], outputs['encoderOut'][1], outputs['encoderOut'][2], outputs['encoderOut'][3]], axis = -1)
-            features = tf.expand_dims(features, axis = 0)
             if run_projection:
-                scaling_factor = predict_scaling_factor(cfg, features, is_training)
                 all_points = self.replicate_for_multiview(pc) # [4, VHW, 3]
-                num_candidates = cfg.pose_predict_num_candidates
                 outputs['all_points'] = all_points
-                if cfg.pc_learn_occupancy_scaling:
-                    all_scaling_factors = self.replicate_for_multiview(scaling_factor)
-                    if num_candidates > 1:
-                        all_scaling_factors = tf_repeat_0(all_scaling_factors, num_candidates)
-                else:
-                    all_scaling_factors = None
-                outputs['all_scaling_factors'] = all_scaling_factors
+                outputs['all_scaling_factors'] = outputs['scaling_factor']
                 outputs = self.compute_projection(inputs, outputs, is_training)
                 scale = 128 / cfg.vox_size
                 outputs['test_o'] = outputs['coord'] * scale
@@ -956,8 +947,8 @@ class ModelPointCloud(DataPreprocessor):  # pylint:disable=invalid-name
  
         if cfg.cd_weight:
             cd1_loss, cd2_loss = self.add_another_cd_loss(inputs, outputs, cfg.cd_weight, add_summary)
-            g_loss += cd1_loss * 100
-            g_loss += cd2_loss * 100
+            g_loss += cd1_loss * 1000
+            g_loss += cd2_loss * 1000
         else:
             cd1_loss = tf.zeros(dtype=tf.float32, shape=[])
             cd2_loss = tf.zeros(dtype=tf.float32, shape=[])

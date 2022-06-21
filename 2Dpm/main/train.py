@@ -130,7 +130,7 @@ def train():
     with tf.Session(config=session_config) as sess:
         tf.global_variables_initializer().run()
         tf.local_variables_initializer().run()
-        summary_writer = tf.summary.FileWriter(train_dir, flush_secs=10, graph=sess.graph)
+        summary_writer = tf.summary.FileWriter(train_dir, flush_secs=10, graph=tf.get_default_graph())
         # checkpoint_file = os.path.join("../Results/Final_Run/32/", 'model-{}'.format(600000))
         # saver.restore(sess, checkpoint_file)
         global_step_val = 0
@@ -147,7 +147,7 @@ def train():
             assert(not np.any(is_nan))
             epoch_loss += loss_val
 
-            if global_step_val % 1000 == 0 and global_step_val > 0:
+            if global_step_val % 10000 == 0 and global_step_val > 0:
                 print("Checking Distributions")
                 print("Fused point clouds Output" + ": " + str(result['points_1'].min()) + "," + str(result['points_1'].max()) + "," + str(np.mean(result['points_1'])) + "," + str(np.std(result['points_1'])))
                 print("2D Projections Output" + ": " + str(result['projs'].min()) + "," + str(result['projs'].max()) + "," + str(np.mean(result['projs'])) + "," + str(np.std(result['projs'])))
